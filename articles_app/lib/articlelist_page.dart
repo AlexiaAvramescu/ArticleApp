@@ -33,7 +33,7 @@ class ArticleCard extends StatelessWidget {
   final String url;
   final VoidCallback onFavoritePressed;
 
-  ArticleCard({
+  const ArticleCard({super.key, 
     required this.title,
     required this.author,
     required this.commentCount,
@@ -50,6 +50,13 @@ class ArticleCard extends StatelessWidget {
       elevation: 2,
       margin: const EdgeInsets.all(8),
       child: ListTile(
+        leading: IconButton(
+              icon: Icon(
+                isFavorited ? Icons.favorite : Icons.favorite_border,
+                color: isFavorited ? Colors.red[300] : null,
+              ),
+              onPressed: onFavoritePressed,
+            ),
         title: Text(
           title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
@@ -58,27 +65,19 @@ class ArticleCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('By $author'),
-            InkWell(
-              child: const Text(
-                'Read here',
-                style: TextStyle(color: Colors.blue),
-              ),
-              onTap: () async{
-                // to do 
-              },
-            ),
           ],
         ),
-        trailing: Row(
+        onTap: () async{
+          if (!await launchUrl(
+                  Uri.parse(url),
+                  mode: LaunchMode.externalApplication,
+                )) {
+                  throw Exception('Could not launch $url');
+                }
+        },
+        trailing: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: Icon(
-                isFavorited ? Icons.favorite : Icons.favorite_border,
-                color: isFavorited ? Colors.red[300] : null,
-              ),
-              onPressed: onFavoritePressed,
-            ),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -86,10 +85,9 @@ class ArticleCard extends StatelessWidget {
                 Text('$pointCount Points'),
               ],
             ),
-          ],
-        ),
+          ]
       ),
-    );
+    ));
   }
 }
 
@@ -120,7 +118,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
     return Scaffold(
       appBar: AppBar(
         elevation: 2,
-        title: Text('Article List'),
+        title: const Text('Article List'),
         actions: [Container(
           padding: const EdgeInsets.only(right: 20),
           child: IconButton(
