@@ -54,15 +54,15 @@ class _ArticleListPageState extends State<ArticleListPage> {
     return false;
   }
 
-  Future<List<Article>> _initializeArticles() async {
+  Future<List<Article>> _initializeArticles(List<dynamic> articleToInit) async {
     List<Article> articleList = [];
-    for (int index = 0; index < articleInfo.length; index++) {
+    for (int index = 0; index < articleToInit.length; index++) {
       final article = Article(
-        title: articleInfo[index]["title"] ?? "Title not available",
-        author: articleInfo[index]["author"] ?? "Author not available",
-        commentCount: articleInfo[index]["num_comments"] ?? 0,
-        pointCount: articleInfo[index]["points"] ?? 0,
-        url: articleInfo[index]["url"] ?? "",
+        title: articleToInit[index]["title"] ?? "Title not available",
+        author: articleToInit[index]["author"] ?? "Author not available",
+        commentCount: articleToInit[index]["num_comments"] ?? 0,
+        pointCount: articleToInit[index]["points"] ?? 0,
+        url: articleToInit[index]["url"] ?? "",
         isFavorited: await _getFavoriteState(index),
       );
       articleList.add(article);
@@ -70,13 +70,13 @@ class _ArticleListPageState extends State<ArticleListPage> {
     return articleList;
   }
 
-   List<dynamic> _searchArticles(String keyword) {
+   Future<List<Article>> _searchArticles(String keyword) async {
     if (keyword.isEmpty) {
-      return articleInfo;
+      return await _initializeArticles(articleInfo);
     }
-    return articleInfo
+    return _initializeArticles(articleInfo
         .where((article) => article["title"].toLowerCase().contains(keyword.toLowerCase()))
-        .toList();
+        .toList());
   }
 
   @override
@@ -113,7 +113,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
                     prefixIcon: const Icon(Icons.search),
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                  onChanged: (value){},),
+                  onChanged: (value){ _searchArticles(value); setState(() {});},),
             ),
           ),
         ),
@@ -133,7 +133,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
           ),
         ),
         body: FutureBuilder<List<Article>>(
-          future: _initializeArticles(),
+          future: _searchArticles(_searchController.text),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -141,9 +141,8 @@ class _ArticleListPageState extends State<ArticleListPage> {
               return  Center(child: Text(
                   'Error: ${snapshot.error}')); 
             } else {
-              final filteredArticles = _searchArticles(_searchController.text);
               return ListView.builder(
-                itemCount: filteredArticles.length,
+                itemCount: snapshot.data?.length,
                 itemBuilder: (context, index) {
                   Article article = snapshot.data![index];
                   return ArticleCard(
