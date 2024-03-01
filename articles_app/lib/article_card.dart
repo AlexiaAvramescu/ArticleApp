@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class Article {
+  final String id;
   final String title;
   final String author;
   final int commentCount;
@@ -11,6 +12,7 @@ class Article {
   bool isFavorited;
 
   Article({
+    required this.id,
     required this.title,
     required this.author,
     required this.commentCount,
@@ -18,6 +20,16 @@ class Article {
     required this.url,
     required this.isFavorited,
   });
+
+  int Compare(String type, String order, Article other){
+    if(type == 'date') {
+      return 0;
+    }
+    else {
+      if (order == 'ascending') return pointCount.compareTo(other.pointCount);
+      return other.pointCount.compareTo(pointCount);
+    }
+  }
 }
 
 class ArticleCard extends StatelessWidget {

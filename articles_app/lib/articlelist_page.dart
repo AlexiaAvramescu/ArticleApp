@@ -16,11 +16,13 @@ class ArticleListPage extends StatefulWidget {
 class _ArticleListPageState extends State<ArticleListPage> {
   List<dynamic> articleInfo = [];
   final TextEditingController _searchController = TextEditingController();
+  String _selectedSortOption = 'ascending';
+  String _selectedTypeSortOption = 'date';
 
   @override
   void initState() {
     super.initState();
-    fetchArticles(); // Call fetchArticles() in initState()
+    fetchArticles();
   }
 
   void fetchArticles() async {
@@ -34,49 +36,58 @@ class _ArticleListPageState extends State<ArticleListPage> {
     });
   }
 
-  Future<bool> _getFavoriteState(int index) async {
+  Future<bool> _getFavoriteState(String id) async {
     final favorites = await SharedPreferences.getInstance();
-    final isFavorite = favorites.getBool('$index');
+    final isFavorite = favorites.getBool(id);
     if (isFavorite == null) {
       return false;
     }
     return isFavorite;
   }
 
-  Future<bool> _changeFavoriteState(int index) async {
+  Future<bool> _changeFavoriteState(String id) async {
     final favorites = await SharedPreferences.getInstance();
-    final isFavorite = favorites.getBool('$index');
+    final isFavorite = favorites.getBool(id);
     if (isFavorite == null) {
-      await favorites.setBool('$index', true);
+      await favorites.setBool(id, true);
       return true;
     }
-    await favorites.setBool('$index', !isFavorite);
+    await favorites.setBool(id, !isFavorite);
     return false;
   }
 
   Future<List<Article>> _initializeArticles(List<dynamic> articleToInit) async {
     List<Article> articleList = [];
     for (int index = 0; index < articleToInit.length; index++) {
+      if(articleToInit[index]["objectID"] == null) continue;
       final article = Article(
+        id: articleToInit[index]["objectID"],
         title: articleToInit[index]["title"] ?? "Title not available",
         author: articleToInit[index]["author"] ?? "Author not available",
         commentCount: articleToInit[index]["num_comments"] ?? 0,
         pointCount: articleToInit[index]["points"] ?? 0,
         url: articleToInit[index]["url"] ?? "",
-        isFavorited: await _getFavoriteState(index),
+        isFavorited: await _getFavoriteState(articleToInit[index]["objectID"]),
       );
       articleList.add(article);
     }
     return articleList;
   }
 
-   Future<List<Article>> _searchArticles(String keyword) async {
+  Future<List<Article>> _searchArticles(String keyword) async {
+    List<Article> sortedArticleList;
     if (keyword.isEmpty) {
-      return await _initializeArticles(articleInfo);
+      sortedArticleList = await _initializeArticles(articleInfo);
+    } else {
+      sortedArticleList = await _initializeArticles(articleInfo
+          .where((article) =>
+              article["title"].toLowerCase().contains(keyword.toLowerCase()))
+          .toList());
     }
-    return _initializeArticles(articleInfo
-        .where((article) => article["title"].toLowerCase().contains(keyword.toLowerCase()))
-        .toList());
+
+    sortedArticleList.sort((elem1, elem2) =>
+        elem1.Compare(_selectedTypeSortOption, _selectedSortOption, elem2));
+    return sortedArticleList;
   }
 
   @override
@@ -89,31 +100,93 @@ class _ArticleListPageState extends State<ArticleListPage> {
             Container(
               padding: const EdgeInsets.only(right: 20),
               child: IconButton(
-                  onPressed: () {},
-                  icon: const Icon(
-                    Icons.filter_list,
-                    size: 38,
-                  )),
-            )
+                onPressed: () {
+                  showModalBottomSheet<void>(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (BuildContext context) {
+                      return Container(
+                        width: MediaQuery.of(context)
+                            .size
+                            .width, // Set width to full screen width
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 20, horizontal: 20),
+                        child: Row(
+                          children: [
+                            const Text('Sort By:'),
+                            const SizedBox(width: 20),
+                            DropdownButton<String>(
+                              value: _selectedTypeSortOption,
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedTypeSortOption = newValue!;
+                                });
+                              },
+                              items: <String>[
+                                'date',
+                                'points'
+                              ].map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(width: 20),
+                            DropdownButton<String>(
+                              value: _selectedSortOption,
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedSortOption = newValue!;
+                                });
+                              },
+                              items: <String>[
+                                'ascending',
+                                'descending'
+                              ].map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+                icon: const Icon(
+                  Icons.filter_list,
+                  size: 38,
+                ),
+              ),
+            ),
           ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(50),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search articles...',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    prefixIcon: const Icon(Icons.search),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search articles...',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
                   ),
-                  onChanged: (value){ _searchArticles(value); setState(() {});},),
+                  prefixIcon: const Icon(Icons.search),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                onChanged: (value) {
+                  setState(() {});
+                },
+              ),
             ),
           ),
         ),
@@ -138,8 +211,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return  Center(child: Text(
-                  'Error: ${snapshot.error}')); 
+              return Center(child: Text('Error: ${snapshot.error}'));
             } else {
               return ListView.builder(
                 itemCount: snapshot.data?.length,
@@ -153,7 +225,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
                     url: article.url,
                     isFavorited: article.isFavorited,
                     onFavoritePressed: () {
-                      _changeFavoriteState(index);
+                      _changeFavoriteState(article.id);
                       setState(() {});
                     },
                   );
@@ -164,30 +236,3 @@ class _ArticleListPageState extends State<ArticleListPage> {
         ));
   }
 }
-
-// ListView.builder(
-//         itemCount: articleInfo.length,
-//         itemBuilder: (context, index) {
-
-//           final article = Article(
-//             title: articleInfo[index]["title"] ?? "Title not available",
-//             author: articleInfo[index]["author"] ?? "Author not available",
-//             commentCount: articleInfo[index]["num_comments"] ?? 0,
-//             pointCount: articleInfo[index]["points"] ?? 0,
-//             url: articleInfo[index]["url"] ?? "",
-//             isFavorited:  false,
-//           );
-
-//           return ArticleCard(
-//             title: article.title,
-//             author: article.author,
-//             commentCount: article.commentCount,
-//             pointCount: article.pointCount,
-//             url: article.url,
-//             isFavorited: article.isFavorited,
-//             onFavoritePressed: () {
-//               _changeFavoriteState(index);
-//             },
-//           );
-//         },
-//       ),

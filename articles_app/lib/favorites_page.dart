@@ -74,6 +74,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         itemBuilder: (context, index) {
 
           final article = Article(
+            id: articles[index]["objectID"],
             title: articles[index]["title"] ?? "Title not available",
             author: articles[index]["author"] ?? "Author not available",
             commentCount: articles[index]["num_comments"] ?? 0,
