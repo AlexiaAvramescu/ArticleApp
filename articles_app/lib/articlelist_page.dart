@@ -1,10 +1,9 @@
 import 'dart:convert';
-
 import 'package:articles_app/favorites_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'article_card.dart';
+import 'utils.dart';
 
 class ArticleListPage extends StatefulWidget {
   const ArticleListPage({super.key});
@@ -16,16 +15,16 @@ class ArticleListPage extends StatefulWidget {
 class _ArticleListPageState extends State<ArticleListPage> {
   List<dynamic> articleInfo = [];
   final TextEditingController _searchController = TextEditingController();
-  String _selectedSortOption = 'ascending';
-  String _selectedTypeSortOption = 'date';
+  String _orderSortOption = 'ascending';
+  String _typeSortOption = 'date';
 
   @override
   void initState() {
     super.initState();
-    fetchArticles();
+    _fetchArticles();
   }
 
-  void fetchArticles() async {
+  void _fetchArticles() async {
     const String url = "https://hn.algolia.com/api/v1/search?tags=front_page";
     final uri = Uri.parse(url);
     final response = await http.get(uri);
@@ -36,57 +35,19 @@ class _ArticleListPageState extends State<ArticleListPage> {
     });
   }
 
-  Future<bool> _getFavoriteState(String id) async {
-    final favorites = await SharedPreferences.getInstance();
-    final isFavorite = favorites.getBool(id);
-    if (isFavorite == null) {
-      return false;
-    }
-    return isFavorite;
-  }
-
-  Future<bool> _changeFavoriteState(String id) async {
-    final favorites = await SharedPreferences.getInstance();
-    final isFavorite = favorites.getBool(id);
-    if (isFavorite == null) {
-      await favorites.setBool(id, true);
-      return true;
-    }
-    await favorites.setBool(id, !isFavorite);
-    return false;
-  }
-
-  Future<List<Article>> _initializeArticles(List<dynamic> articleToInit) async {
-    List<Article> articleList = [];
-    for (int index = 0; index < articleToInit.length; index++) {
-      if(articleToInit[index]["objectID"] == null) continue;
-      final article = Article(
-        id: articleToInit[index]["objectID"],
-        title: articleToInit[index]["title"] ?? "Title not available",
-        author: articleToInit[index]["author"] ?? "Author not available",
-        commentCount: articleToInit[index]["num_comments"] ?? 0,
-        pointCount: articleToInit[index]["points"] ?? 0,
-        url: articleToInit[index]["url"] ?? "",
-        isFavorited: await _getFavoriteState(articleToInit[index]["objectID"]),
-      );
-      articleList.add(article);
-    }
-    return articleList;
-  }
-
   Future<List<Article>> _searchArticles(String keyword) async {
     List<Article> sortedArticleList;
     if (keyword.isEmpty) {
-      sortedArticleList = await _initializeArticles(articleInfo);
+      sortedArticleList = await initializeArticles(articleInfo);
     } else {
-      sortedArticleList = await _initializeArticles(articleInfo
+      sortedArticleList = await initializeArticles(articleInfo
           .where((article) =>
               article["title"].toLowerCase().contains(keyword.toLowerCase()))
           .toList());
     }
 
     sortedArticleList.sort((elem1, elem2) =>
-        elem1.Compare(_selectedTypeSortOption, _selectedSortOption, elem2));
+        elem1.compare(_typeSortOption, _orderSortOption, elem2));
     return sortedArticleList;
   }
 
@@ -119,10 +80,10 @@ class _ArticleListPageState extends State<ArticleListPage> {
                             const Text('Sort By:'),
                             const SizedBox(width: 20),
                             DropdownButton<String>(
-                              value: _selectedTypeSortOption,
+                              value: _typeSortOption,
                               onChanged: (String? newValue) {
                                 setState(() {
-                                  _selectedTypeSortOption = newValue!;
+                                  _typeSortOption = newValue!;
                                 });
                               },
                               items: <String>[
@@ -137,10 +98,10 @@ class _ArticleListPageState extends State<ArticleListPage> {
                             ),
                             const SizedBox(width: 20),
                             DropdownButton<String>(
-                              value: _selectedSortOption,
+                              value: _orderSortOption,
                               onChanged: (String? newValue) {
                                 setState(() {
-                                  _selectedSortOption = newValue!;
+                                  _orderSortOption = newValue!;
                                 });
                               },
                               items: <String>[
@@ -201,8 +162,12 @@ class _ArticleListPageState extends State<ArticleListPage> {
             icon: const Icon(Icons.favorite),
             iconSize: 40,
             color: Colors.white,
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const FavoritesPage())),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => FavoritesPage(
+                          articleInfo: articleInfo,
+                        ))),
           ),
         ),
         body: FutureBuilder<List<Article>>(
@@ -225,7 +190,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
                     url: article.url,
                     isFavorited: article.isFavorited,
                     onFavoritePressed: () {
-                      _changeFavoriteState(article.id);
+                      changeFavoriteState(article.id);
                       setState(() {});
                     },
                   );

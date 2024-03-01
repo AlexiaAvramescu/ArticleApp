@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -6,6 +5,7 @@ class Article {
   final String id;
   final String title;
   final String author;
+  final DateTime date;
   final int commentCount;
   final int pointCount;
   final String url;
@@ -15,17 +15,18 @@ class Article {
     required this.id,
     required this.title,
     required this.author,
+    required this.date,
     required this.commentCount,
     required this.pointCount,
     required this.url,
     required this.isFavorited,
   });
 
-  int Compare(String type, String order, Article other){
-    if(type == 'date') {
-      return 0;
-    }
-    else {
+  int compare(String type, String order, Article other) {
+    if (type == 'date') {
+      if (order == 'ascending') return date.compareTo(other.date);
+      return other.date.compareTo(date);
+    } else {
       if (order == 'ascending') return pointCount.compareTo(other.pointCount);
       return other.pointCount.compareTo(pointCount);
     }
@@ -75,12 +76,11 @@ class ArticleCard extends StatelessWidget {
             ],
           ),
           onTap: () async {
-            if(url.isEmpty) {
+            if (url.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('No link available for this article.'),
-                  duration:
-                      Duration(seconds: 2), // Adjust the duration as needed
+                  duration: Duration(seconds: 2),
                 ),
               );
               return;
