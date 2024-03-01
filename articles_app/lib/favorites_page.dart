@@ -40,7 +40,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 itemCount: snapshot.data?.length,
                 itemBuilder: (context, index) {
                   Article article = snapshot.data![index];
-                  if (article.isFavorited) {
                     return ArticleCard(
                       title: article.title,
                       author: article.author,
@@ -53,7 +52,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
                         setState(() {});
                       },
                     );
-                  }
                 },
               );
             }
