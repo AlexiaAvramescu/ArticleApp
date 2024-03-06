@@ -25,6 +25,8 @@ class _ArticleListPageState extends State<ArticleListPage> {
       TextEditingController(text: '');
   String _orderSortOption = 'ascending';
   String _typeSortOption = 'date';
+  bool _filterByDates = false;
+  bool _filterByPoints = false;
 
   @override
   void initState() {
@@ -68,7 +70,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
     DateTime? startDate = DateTime.tryParse(_startDateController.text);
     DateTime? endDate = DateTime.tryParse(_endDateController.text);
 
-    if (startDate == null && endDate == null) return articleList;
+    if (startDate == null && endDate == null || !_filterByDates) return articleList;
 
     if (startDate != null && endDate != null) {
       if (startDate.isAfter(endDate)) {
@@ -111,7 +113,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
     int minPoints = int.tryParse(_minPointsController.text) ?? 0;
     int maxPoints = int.tryParse(_maxPointsController.text) ?? 0;
 
-    if (minPoints == 0 && maxPoints == 0) return articleList;
+    if (minPoints == 0 && maxPoints == 0 || !_filterByPoints) return articleList;
 
     if (minPoints > maxPoints) {
       showDialog(
@@ -214,7 +216,22 @@ class _ArticleListPageState extends State<ArticleListPage> {
                             const SizedBox(height: 10),
                             Row(
                               children: [
+                                Checkbox(
+                                  value: _filterByPoints,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _filterByPoints = value ?? false;
+                                    });
+                                  },
+                                  activeColor: _filterByDates
+                                      ? Colors.blue
+                                      : Colors.white,
+                                ),
                                 const Text('Filter by points:'),
+                              ],
+                            ),
+                            Row(
+                              children: [
                                 const SizedBox(width: 20),
                                 Expanded(
                                   child: TextField(
@@ -252,7 +269,22 @@ class _ArticleListPageState extends State<ArticleListPage> {
                             const SizedBox(height: 10),
                             Row(
                               children: [
+                                Checkbox(
+                                  value: _filterByDates,
+                                  onChanged: (bool? newValue) {
+                                    setState(() {
+                                      _filterByDates = newValue ?? false;
+                                    });
+                                  },
+                                  activeColor: _filterByDates
+                                      ? Colors.blue
+                                      : Colors.white,
+                                ),
                                 const Text('Filter by dates:'),
+                              ],
+                            ),
+                            Row(
+                              children: [
                                 const SizedBox(width: 20),
                                 Expanded(
                                   child: TextFormField(
@@ -264,7 +296,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
                                           color: Theme.of(context).dividerColor,
                                         ),
                                       ),
-                                      hintText: 'Start Date (YYYY-MM-DD)',
+                                      hintText: 'Start Date',
                                     ),
                                     onTap: () async {
                                       final DateTime? picked =
@@ -295,7 +327,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
                                           color: Theme.of(context).dividerColor,
                                         ),
                                       ),
-                                      hintText: 'Start Date (YYYY-MM-DD)',
+                                      hintText: 'End Date',
                                     ),
                                     onTap: () async {
                                       final DateTime? picked =
