@@ -40,18 +40,18 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 itemCount: snapshot.data?.length,
                 itemBuilder: (context, index) {
                   Article article = snapshot.data![index];
-                    return ArticleCard(
-                      title: article.title,
-                      author: article.author,
-                      commentCount: article.commentCount,
-                      pointCount: article.pointCount,
-                      url: article.url,
-                      isFavorited: article.isFavorited,
-                      onFavoritePressed: () {
-                        changeFavoriteState(article.id);
-                        setState(() {});
-                      },
-                    );
+                  return ArticleCard(
+                    title: article.title,
+                    author: article.author,
+                    commentCount: article.commentCount,
+                    pointCount: article.pointCount,
+                    url: article.url,
+                    isFavorited: article.isFavorited,
+                    onFavoritePressed: () {
+                      changeFavoriteState(article.id);
+                      setState(() {});
+                    },
+                  );
                 },
               );
             }

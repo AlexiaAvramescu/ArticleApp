@@ -15,6 +15,14 @@ class ArticleListPage extends StatefulWidget {
 class _ArticleListPageState extends State<ArticleListPage> {
   List<dynamic> articleInfo = [];
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _minPointsController =
+      TextEditingController(text: '0');
+  final TextEditingController _maxPointsController =
+      TextEditingController(text: '0');
+  final TextEditingController _startDateController =
+      TextEditingController(text: '');
+  final TextEditingController _endDateController =
+      TextEditingController(text: '');
   String _orderSortOption = 'ascending';
   String _typeSortOption = 'date';
 
@@ -36,19 +44,109 @@ class _ArticleListPageState extends State<ArticleListPage> {
   }
 
   Future<List<Article>> _searchArticles(String keyword) async {
-    List<Article> sortedArticleList;
+    List<Article> searchedArticleList;
     if (keyword.isEmpty) {
-      sortedArticleList = await initializeArticles(articleInfo);
+      searchedArticleList = await initializeArticles(articleInfo);
     } else {
-      sortedArticleList = await initializeArticles(articleInfo
+      searchedArticleList = await initializeArticles(articleInfo
           .where((article) =>
               article["title"].toLowerCase().contains(keyword.toLowerCase()))
           .toList());
     }
 
-    sortedArticleList.sort((elem1, elem2) =>
+    return searchedArticleList;
+  }
+
+  List<Article> _sortArticle(List<Article> articles) {
+    articles.sort((elem1, elem2) =>
         elem1.compare(_typeSortOption, _orderSortOption, elem2));
-    return sortedArticleList;
+
+    return articles;
+  }
+
+  List<Article> _filterDateArticle(List<Article> articleList) {
+    DateTime? startDate = DateTime.tryParse(_startDateController.text);
+    DateTime? endDate = DateTime.tryParse(_endDateController.text);
+
+    if (startDate == null && endDate == null) return articleList;
+
+    if (startDate != null && endDate != null) {
+      if (startDate.isAfter(endDate)) {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Invalid Date Range'),
+              content: const Text('Start date cannot be later than end date.'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+        return articleList;
+      }
+    }
+
+    List<Article> filteredList = articleList.where((article) {
+      if (startDate != null && endDate != null) {
+        return article.date.isAfter(startDate) &&
+            article.date.isBefore(endDate);
+      } else if (startDate != null) {
+        return article.date.isAfter(startDate);
+      } else {
+        return article.date.isBefore(endDate!);
+      }
+    }).toList();
+
+    return filteredList;
+  }
+
+  List<Article> _filterPointsArticle(List<Article> articleList) {
+    int minPoints = int.tryParse(_minPointsController.text) ?? 0;
+    int maxPoints = int.tryParse(_maxPointsController.text) ?? 0;
+
+    if (minPoints == 0 && maxPoints == 0) return articleList;
+
+    if (minPoints > maxPoints) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Invalid Range'),
+            content: const Text(
+                'Minimum points cannot be greater than maximum points.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+    List<Article> filteredList = articleList.where((article) {
+      return article.pointCount >= minPoints && article.pointCount <= maxPoints;
+    }).toList();
+
+    return filteredList;
+  }
+
+  Future<List<Article>> _getArticles(String keyword) async {
+    List<Article> articleList = await _searchArticles(keyword);
+    articleList = _sortArticle(articleList);
+    articleList = _filterPointsArticle(articleList);
+    articleList = _filterDateArticle(articleList);
+
+    return articleList;
   }
 
   @override
@@ -70,50 +168,155 @@ class _ArticleListPageState extends State<ArticleListPage> {
                     ),
                     builder: (BuildContext context) {
                       return Container(
-                        width: MediaQuery.of(context)
-                            .size
-                            .width, // Set width to full screen width
                         padding: const EdgeInsets.symmetric(
                             vertical: 20, horizontal: 20),
-                        child: Row(
+                        child: Column(
                           children: [
-                            const Text('Sort By:'),
-                            const SizedBox(width: 20),
-                            DropdownButton<String>(
-                              value: _typeSortOption,
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _typeSortOption = newValue!;
-                                });
-                              },
-                              items: <String>[
-                                'date',
-                                'points'
-                              ].map<DropdownMenuItem<String>>((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
+                            Row(
+                              children: [
+                                const Text('Sort By:'),
+                                const SizedBox(width: 20),
+                                DropdownButton<String>(
+                                  value: _typeSortOption,
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      _typeSortOption = newValue!;
+                                    });
+                                  },
+                                  items: <String>['date', 'points']
+                                      .map<DropdownMenuItem<String>>(
+                                          (String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(width: 20),
+                                DropdownButton<String>(
+                                  value: _orderSortOption,
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      _orderSortOption = newValue!;
+                                    });
+                                  },
+                                  items: <String>['ascending', 'descending']
+                                      .map<DropdownMenuItem<String>>(
+                                          (String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 20),
-                            DropdownButton<String>(
-                              value: _orderSortOption,
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _orderSortOption = newValue!;
-                                });
-                              },
-                              items: <String>[
-                                'ascending',
-                                'descending'
-                              ].map<DropdownMenuItem<String>>((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                const Text('Filter by points:'),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _minPointsController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Theme.of(context).dividerColor,
+                                        ),
+                                      ),
+                                    ),
+                                    onSubmitted: (value) => setState(() {}),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 10,
+                                ),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _maxPointsController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Theme.of(context).dividerColor,
+                                        ),
+                                      ),
+                                    ),
+                                    onSubmitted: (value) => setState(() {}),
+                                  ),
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                const Text('Filter by dates:'),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _startDateController,
+                                    keyboardType: TextInputType.datetime,
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Theme.of(context).dividerColor,
+                                        ),
+                                      ),
+                                      hintText: 'Start Date (YYYY-MM-DD)',
+                                    ),
+                                    onTap: () async {
+                                      final DateTime? picked =
+                                          await showDatePicker(
+                                        context: context,
+                                        initialDate: DateTime.now(),
+                                        firstDate: DateTime(1900),
+                                        lastDate: DateTime.now(),
+                                      );
+                                      if (picked != null) {
+                                        setState(() {
+                                          _startDateController.text = picked
+                                              .toIso8601String()
+                                              .substring(0, 10);
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _endDateController,
+                                    keyboardType: TextInputType.datetime,
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Theme.of(context).dividerColor,
+                                        ),
+                                      ),
+                                      hintText: 'Start Date (YYYY-MM-DD)',
+                                    ),
+                                    onTap: () async {
+                                      final DateTime? picked =
+                                          await showDatePicker(
+                                        context: context,
+                                        initialDate: DateTime.now(),
+                                        firstDate: DateTime(1900),
+                                        lastDate: DateTime.now(),
+                                      );
+                                      if (picked != null) {
+                                        setState(() {
+                                          _endDateController.text = picked
+                                              .toIso8601String()
+                                              .substring(0, 10);
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            )
                           ],
                         ),
                       );
@@ -171,7 +374,7 @@ class _ArticleListPageState extends State<ArticleListPage> {
           ),
         ),
         body: FutureBuilder<List<Article>>(
-          future: _searchArticles(_searchController.text),
+          future: _getArticles(_searchController.text),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
